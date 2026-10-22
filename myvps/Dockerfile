@@ -23,6 +23,8 @@ RUN sed -i -e 's|^mirrorlist=|#mirrorlist=|' \
     && python3.12 -m venv /opt/myvps-tools
 
 COPY --from=node /usr/local/ /usr/local/
+RUN dnf -y -q install nftables iproute \
+    && dnf clean all && rm -rf /var/cache/dnf
 COPY requirements.txt /opt/myvps/requirements.txt
 RUN /opt/myvps-tools/bin/pip install --no-cache-dir -r /opt/myvps/requirements.txt \
     && ln -s /opt/myvps-tools/bin/certbot /usr/local/bin/certbot
@@ -41,7 +43,7 @@ ENV PATH="/opt/myvps-tools/bin:${PATH}" \
     DOTNET_NOLOGO=1
 
 ARG BUILD_ARCH=aarch64
-ARG BUILD_VERSION=0.2.0
+ARG BUILD_VERSION=0.3.0
 LABEL io.hass.name="myvps" \
       io.hass.description="Rocky Linux development and web server workspace" \
       io.hass.type="addon" \

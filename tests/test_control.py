@@ -5,8 +5,10 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+import sys
 from unittest.mock import patch
 
+sys.path.insert(0, '/opt/myvps')
 spec = importlib.util.spec_from_file_location('control', '/opt/myvps/control.py')
 control = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(control)

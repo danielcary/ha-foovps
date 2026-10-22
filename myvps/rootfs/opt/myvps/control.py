@@ -13,6 +13,8 @@ import time
 
 from dotenv import dotenv_values
 
+import firewall
+
 DATA = Path('/data')
 RUN = Path('/run/myvps')
 SUPERVISOR_CONFIG = RUN / 'supervisord.conf'
@@ -20,6 +22,7 @@ DEFAULTS = {
     'ssh_authorized_keys': [], 'packages': [], 'app_enabled': True,
     'app_directory': '/data/workspace/starter-app', 'app_command': '', 'app_port': 3000,
     'tls': {'enabled': False, 'domains': [], 'domain': '', 'email': '', 'staging': False},
+    'network_protection': firewall.DEFAULTS,
 }
 PACKAGE = re.compile(r'[A-Za-z0-9][A-Za-z0-9+_.:-]*\Z')
 DOMAIN = re.compile(r'(?=.{1,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?\Z')
@@ -54,6 +57,7 @@ def options():
     source = read_json(DATA / 'options.json', {})
     settings = {**DEFAULTS, **source}
     settings['tls'] = {**DEFAULTS['tls'], **source.get('tls', {})}
+    settings['network_protection'] = firewall.validate(source.get('network_protection', {}))
     port = settings['app_port']
     if type(port) is not int or not 1024 <= port <= 65535:
         raise ValueError('app_port must be an integer between 1024 and 65535')
@@ -226,6 +230,9 @@ stdout_logfile_backups=3
 def initialize():
     root_required()
     settings = options()
+    network_state = firewall.install(settings['network_protection'], settings['tls']['domains'], RUN)
+    log('Network protection: ' + ('enabled; new connections to local networks and outbound IPv6 blocked.'
+        if network_state['enabled'] else 'DISABLED; local networks can be reached.'))
     DATA.mkdir(parents=True, exist_ok=True)
     DATA.chmod(0o755)
     RUN.mkdir(parents=True, exist_ok=True)
@@ -305,7 +312,8 @@ Subsystem sftp internal-sftp
     (DATA / 'logs/web.log').touch(exist_ok=True)
     subprocess.run(['/usr/sbin/sshd', '-t', '-f', str(RUN / 'sshd_config')], check=True)
     log('Starting Rocky workspace: SSH :22, HTTP :80, web app as unprivileged user app.')
-    os.execv('/opt/myvps-tools/bin/supervisord', ['supervisord', '-c', str(SUPERVISOR_CONFIG)])
+    os.execv('/usr/bin/setpriv', ['setpriv', *firewall.DROP_CAPABILITIES,
+             '/opt/myvps-tools/bin/supervisord', '-c', str(SUPERVISOR_CONFIG)])
 
 
 def run_web():
@@ -401,7 +409,7 @@ def main():
     parser = argparse.ArgumentParser(description='Operate the myvps workspace')
     parser.add_argument('command', nargs='?', default='help', choices=[
         'help', 'status', 'start', 'stop', 'restart', 'logs', 'check', 'packages',
-        'certificates', 'reload-nginx', '_init', '_web', '_renew'])
+        'certificates', 'reload-nginx', 'firewall', '_init', '_web', '_renew'])
     parser.add_argument('arguments', nargs='*')
     args = parser.parse_args()
     command = args.command
@@ -413,6 +421,8 @@ def main():
         renew_loop()
     elif command == 'status':
         supervisor('status', check=False)
+    elif command == 'firewall':
+        print(json.dumps(read_json(RUN / 'firewall.json', {'error': 'App has not initialized'}), indent=2))
     elif command in ('start', 'stop', 'restart'):
         supervisor(command, 'web')
     elif command == 'logs':
@@ -441,6 +451,7 @@ def main():
         print('''myvps status                 Show all services
 myvps start|stop|restart      Control your web application
 myvps logs                   Follow the web application log
+myvps firewall               Show the network policy installed at startup
 sudo myvps check             Validate settings and Nginx configuration
 myvps packages list          List saved extra packages
 sudo myvps packages add NAME Install and remember a Rocky package

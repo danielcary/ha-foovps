@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0
+
+- Enable a container-only outgoing firewall by default, including existing installations.
+- Block new connections to private/special-use IPv4 networks, the detected home
+  public IPv4 address, configured TLS hostnames' public IPv4 addresses, and new
+  outgoing IPv6 connections. Permit loopback, replies, and designated DNS resolvers.
+- Apply the firewall before extra packages and managed services start. Refuse to
+  start if firewall installation or required public-address discovery fails.
+- Request NET_ADMIN for startup, then remove NET_ADMIN and NET_RAW from runtime
+  services and SSH sessions, including sudo. Keep ordinary container administration.
+- Add HA protection settings, `myvps firewall`, and network containment tests.
+
 ## 0.2.0
 
 - Name the included Express project `starter-app` under `/data/workspace/starter-app`.

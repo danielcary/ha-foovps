@@ -19,6 +19,8 @@ jobs:
       - name: Configuration checks
         run: >-
           docker run --rm --entrypoint /opt/myvps-tools/bin/python
-          -v "$PWD/tests:/tests:ro" myvps:dev /tests/test_control.py
+          -v "$PWD/tests:/tests:ro" myvps:dev -m unittest discover -s /tests -v
+      - name: Container network containment
+        run: python3 scripts/firewall_test.py
       - name: SSH, Express, .NET, persistence, and local ACME
         run: python3 scripts/smoke_test.py --acme

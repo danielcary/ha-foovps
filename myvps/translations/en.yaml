@@ -16,6 +16,19 @@ configuration:
   app_port:
     name: Internal app port
     description: The backend port Nginx connects to. This does not publish another host port.
+  network_protection:
+    name: Home network protection
+    description: Blocks new outgoing connections to home devices and other HA services. Website and SSH access still work.
+    fields:
+      enabled:
+        name: Block access to local devices
+        description: Keep enabled for public websites. Disabling this allows applications to connect to your home network.
+      public_ipv4:
+        name: Home public IPv4 address (optional)
+        description: Leave empty to detect it automatically at startup. Set your actual public IPv4 address if automatic detection is unavailable. Restart after your public IP changes.
+      blocked_ipv4_networks:
+        name: Additional IPv4 networks to block
+        description: Optional extra addresses or CIDR ranges. Private networks are already blocked. New outgoing IPv6 connections are always blocked when protection is enabled.
   tls:
     name: HTTPS certificates
     description: Automatic Let's Encrypt certificates for the selected web app. Every hostname must point to this server and be reachable on public port 80.

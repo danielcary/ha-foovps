@@ -1,5 +1,5 @@
 name: myvps
-version: "0.2.0"
+version: "0.3.0"
 slug: myvps
 description: Rocky Linux workspace with SSH, Node.js, .NET, Nginx, and Let's Encrypt
 url: https://github.com/danielcary/ha-foovps/tree/main/myvps
@@ -14,6 +14,7 @@ timeout: 60
 host_network: false
 privileged:
   - AUDIT_WRITE
+  - NET_ADMIN
 ports:
   22/tcp: 2222
   80/tcp: 8000
@@ -34,6 +35,10 @@ options:
   app_directory: /data/workspace/starter-app
   app_command: ""
   app_port: 3000
+  network_protection:
+    enabled: true
+    public_ipv4: ""
+    blocked_ipv4_networks: []
   tls:
     enabled: false
     domains: []
@@ -48,6 +53,11 @@ schema:
   app_directory: str
   app_command: str
   app_port: port
+  network_protection:
+    enabled: bool
+    public_ipv4: str
+    blocked_ipv4_networks:
+      - str
   tls:
     enabled: bool
     domains:

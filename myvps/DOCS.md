@@ -57,6 +57,40 @@ certificate covers the listed names, which all serve the selected application.
 Changes to the list take effect after restarting the app. The first hostname
 names the certificate. Existing `tls.domain` single-hostname settings still work.
 
+## Home network protection
+
+Version 0.3 enables network protection automatically, including when upgrading.
+No firewall commands are needed. Keep **Home network protection → Block access
+to local devices** enabled in HA and restart the app after changing its settings.
+
+Incoming HTTP/HTTPS and SSH still work. The app can download packages and use
+public IPv4 APIs, but cannot initiate TCP/UDP connections to private IPv4 devices,
+HA's internal network, local-link addresses, or multicast/broadcast destinations.
+New outgoing IPv6 application connections are blocked completely, including
+globally routed home IPv6 addresses. Replies to incoming IPv6 clients still work.
+Loopback and TCP/UDP port 53 to the configured DNS resolvers are exceptions.
+
+The app detects your public IPv4 at startup using ipify, with an AWS fallback,
+and blocks it to prevent router loopback into other forwarded services. Public
+IPv4 addresses of configured TLS hostnames are also blocked. Set
+`network_protection.public_ipv4` to your actual public IPv4 if automatic detection
+is unavailable. **Restart after your public IP or DNS resolver settings change.**
+Use `blocked_ipv4_networks` for extra ranges, additional WAN addresses, or local
+networks using globally routable IPv4 addresses. There is no LAN allowlist.
+
+Run `myvps firewall` over SSH to see the policy installed at startup. If installing
+the firewall or detecting the required public address fails, the app stops and
+explains why in HA's Log tab; it does not silently start without protection.
+
+The startup process uses NET_ADMIN only inside this container's network namespace.
+Before starting services it removes NET_ADMIN and NET_RAW from the runtime
+capability sets, including the bounding set. SSH sudo cannot change the firewall
+or open raw packet sockets; other container administration remains available.
+HA Protection mode can remain enabled. Docker administrators can still bypass
+these restrictions. Root compromise can tamper with files used by a future boot,
+and kernel/container escape vulnerabilities remain possible. This is additional
+containment, not the same boundary as a firewall outside the container.
+
 ## Workspace and network ports
 
 `/data` is the persistent mount; `/data/workspace` is your project directory and

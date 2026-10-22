@@ -76,6 +76,8 @@ def main():
         settings = {'ssh_authorized_keys': [key.with_suffix('.pub').read_text().strip()],
                     'app_enabled': True, 'app_directory': '/data/workspace/starter-app',
                     'app_command': '', 'app_port': 3000, 'packages': [],
+                    'network_protection': {'enabled': True, 'public_ipv4': '1.1.1.1',
+                                           'blocked_ipv4_networks': []},
                     'tls': {'enabled': False, 'domain': '', 'email': '', 'staging': False}}
         options = directory / 'options.json'
 
@@ -93,6 +95,7 @@ def main():
                    '--network-alias', 'app.myvps.test', '--network-alias', 'api.myvps.test',
                    '--network-alias', 'www.myvps.test',
                    '--memory', '1g', '--cpus', '2',
+                   '--cap-add', 'NET_ADMIN',
                    '-e', 'MYVPS_ACME_SERVER=https://pebble:14000/dir',
                    '-e', 'REQUESTS_CA_BUNDLE=/tmp/pebble-ca.pem',
                    '-e', 'SUPERVISOR_TOKEN=must-not-reach-the-web-process',
@@ -102,6 +105,25 @@ def main():
             if args.acme:
                 docker('cp', str(directory / 'cert.pem'), name + ':/tmp/pebble-ca.pem')
             docker('start', name)
+            allow_test_ca()
+            return mapped_ports()
+
+        def allow_test_ca():
+            if not args.acme:
+                return
+            # The production CA is public. This fixture is deliberately private;
+            # only the external Docker test administrator can add this narrow
+            # root-only exception. Web/SSH runtime processes cannot change rules.
+            wait_for(lambda: 'supervisord' in docker('exec', name, 'cat', '/proc/1/cmdline').stdout,
+                     'Startup firewall applied and runtime privileges dropped')
+            address = json.loads(docker('inspect', pebble).stdout)[0]['NetworkSettings']['Networks'][network]['IPAddress']
+            docker('exec', name, 'nft', 'insert', 'rule', 'inet', 'myvps', 'output',
+                   'meta', 'skuid', '0', 'ip', 'daddr', address,
+                   'tcp', 'dport', '{', '14000', ',', '15000', '}', 'accept')
+
+        def restart():
+            docker('restart', '--time', '60', name)
+            allow_test_ca()
             return mapped_ports()
 
         def runtime(port, expected, context=None):
@@ -123,6 +145,7 @@ def main():
                     'httpPort': 80, 'tlsPort': 443}}))
                 docker('run', '-d', '--name', pebble, '--network', network, '--network-alias', 'pebble',
                        '-e', 'PEBBLE_VA_NOSLEEP=1', '-v', str(directory) + ':/test:ro',
+                       '-e', 'PEBBLE_WFE_NONCEREJECT=0',
                        'ghcr.io/letsencrypt/pebble:latest', '-config', '/test/pebble.json')
             ports = start()
             wait_for(lambda: runtime(ports[80], 'node'), 'Express through Nginx')
@@ -169,16 +192,14 @@ def main():
                    'chown -R 1000:1001 /data/workspace/csharp && chmod -R g+rwX /data/workspace/csharp')
             settings['app_directory'] = '/data/workspace/csharp'
             copy_options()
-            docker('restart', '--time', '60', name)
-            ports = mapped_ports()
+            ports = restart()
             wait_for(lambda: runtime(ports[80], 'dotnet'), 'C# builds and serves through Nginx', timeout=180)
             checks.append('dotnet_http')
             if args.acme:
                 settings['tls'].update(enabled=True, domains=['app.myvps.test', 'api.myvps.test'],
                                        email='admin@example.com')
                 copy_options()
-                docker('restart', '--time', '60', name)
-                ports = mapped_ports()
+                ports = restart()
                 # Certificate provisioning is the real Certbot HTTP-01 path, using only local Pebble.
                 wait_for(lambda: docker('exec', name, 'test', '-f',
                          '/data/letsencrypt/live/app.myvps.test/fullchain.pem', check=False).returncode == 0,

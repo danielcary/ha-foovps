@@ -1,22 +1,37 @@
 # Local verification
 
-Verified on October 21, 2026, using Docker Desktop on ARM64 macOS.
+Verified on October 22, 2026, using Docker Desktop on ARM64 macOS.
 
 ## Built image and automated tests
 
 - Rocky Linux 9 ARM64 image built successfully with Node.js 24, .NET 10 SDK,
   Nginx, OpenSSH, and Certbot 5.8.
-- Eight focused tests passed for workspace-path boundaries, package/hostname
+- Eighteen focused tests passed for workspace-path boundaries, package/hostname
   validation, challenge routing, public HTTPS redirect ports, and switching the
-  ACME staging service to production, including domain-list validation and updates.
+  ACME staging service to production, domain-list validation/updates, firewall
+  configuration, DNS resolver handling, public-address discovery, and fail-closed
+  startup ordering.
+- Nine network-containment checks passed against a simulated device on temporary
+  IPv4/IPv6 Docker networks. Both the web user and SSH sudo were blocked from local
+  TCP/UDP, IPv4-mapped IPv6, and the configured public IPv4. Rejection counters
+  verified that the firewall, rather than a missing route, caused each denial.
+  New global IPv6 connections were blocked, while replies to incoming IPv6 worked.
+  Public DNS/HTTPS remained usable. SSH sudo could neither flush the firewall,
+  regain network-administration privilege, nor open raw packet sockets. The web
+  process's capability sets excluded NET_ADMIN/NET_RAW. Missing startup capability
+  and failed public-IP discovery both prevented service startup; restart preserved
+  protection. The simulated UDP device received no blocked probe packets.
 - Eleven integration checks passed with a temporary data volume and a 1 GiB memory
   limit: Express/Nginx, SSH key authentication, privilege separation, ACME HTTP
   routing, crash recovery, persistence after container replacement, saved package
   restoration, C# serving, HTTPS, and local ACME issuance/renewal with Nginx reload.
-  Certificates covered multiple hostnames; adding another name updated the same
+  Network protection remained enabled throughout. Certificates covered multiple hostnames; adding another name updated the same
   certificate and passed a real TLS hostname check against the local CA.
 - The local ACME test used Let's Encrypt's Pebble server and performed HTTP-01
-  validation. No certificates were requested from the public production CA.
+  validation. The Docker test administrator installed a narrow root-only exception
+  for the private test CA; production Let's Encrypt needs no such exception.
+  Artificial nonce rejection was disabled in Pebble to avoid randomized failures.
+  No certificates were requested from the public production CA during these tests.
 
 Run these again with the commands in README.md. CI runs the same container tests
 on ARM64 and AMD64 runners; the local run verified ARM64.
@@ -27,12 +42,19 @@ The official HA development image ran an isolated nested Docker engine with:
 
 - Home Assistant Core 2026.10.2.
 - Supervisor 2026.10.3.
-- myvps 0.2.0 installed through Supervisor's local app store and rebuilt through Supervisor.
+- myvps upgraded from 0.2.0 to 0.3.0 through Supervisor's local app store.
+- Existing options received enabled network protection automatically. Public IPv4
+  discovery succeeded, and the Docker/HA upstream DNS resolver received only a DNS
+  exception. A peer device, the host, and non-DNS access to the resolver were denied
+  from the web user. Public DNS/HTTPS and incoming HTTP/SSH continued working.
 - The renamed `/data/workspace/starter-app` project served its updated welcome page.
   Supervisor accepted the certificate domain list and email fields; original disabled
   TLS settings were restored after checking the configuration round trip.
 - Protection mode on, default AppArmor configuration, `full_access: false`, and
-  `docker_api: false`. SSH used the requested `AUDIT_WRITE` capability.
+  `docker_api: false`. Startup received `AUDIT_WRITE` and `NET_ADMIN`; managed
+  processes and SSH sessions dropped NET_ADMIN/NET_RAW before use. HA reports the
+  resulting security rating as 4. The development Docker kernel did not exercise
+  AppArmor enforcement; the app's configuration retains the default profile.
 - All five managed processes running. Express HTTP and key-based SSH were checked
   through the published host ports, including noninteractive service commands and sudo.
 - Workspace data and SSH keys retained across app rebuilds and replacement of the

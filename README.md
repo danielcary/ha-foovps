@@ -33,10 +33,16 @@ For local development, you can instead copy the `myvps` directory into Home
 Assistant's **local apps directory**, check for updates in the app store, and
 install **myvps** under **Local apps**.
 
-Protection mode can stay on. The app requests `AUDIT_WRITE` for SSH. Your SSH user
+Protection mode can stay on. The app requests `AUDIT_WRITE` for SSH and `NET_ADMIN`
+to install its own firewall at startup. It removes network-administration and
+raw-packet capabilities before starting services. Your SSH user
 has passwordless `sudo` **inside this container**. Web applications run separately
 as the unprivileged `app` user. SSH password login and root SSH login are disabled.
 VS Code Remote SSH and SFTP can use the same connection.
+
+Network protection is enabled by default. The container can serve the website,
+accept SSH, and reach the public IPv4 internet, while new connections to home
+devices and HA services are blocked. See [Home network protection](#home-network-protection).
 
 ## Your Express project
 
@@ -160,6 +166,53 @@ or additional server blocks) or `/config/nginx/server.d/*.conf` (application
 server directives). Then run `sudo myvps reload-nginx`; invalid configurations
 are rejected before replacing the running configuration.
 
+## Home network protection
+
+Version 0.3 enables a container-only outgoing firewall by default, including on
+upgrades with existing options. Leave these settings enabled:
+
+```yaml
+network_protection:
+  enabled: true
+  public_ipv4: ""
+  blocked_ipv4_networks: []
+```
+
+The firewall blocks new connections to private and special-use IPv4 destinations,
+including HA's internal container network, local-link services, and multicast or
+broadcast addresses. It blocks all new outgoing IPv6 application connections to
+cover homes using globally routed IPv6 addresses as well. Public IPv4 connections,
+loopback, and replies to incoming HTTP/HTTPS and SSH connections remain available.
+Only DNS traffic (TCP/UDP 53) to the configured resolvers is allowed into otherwise
+blocked networks. IPv6-only remote APIs cannot be used while protection is enabled.
+
+At startup, the app detects its public IPv4 using HTTPS to `api.ipify.org`, falling
+back to `checkip.amazonaws.com`. It blocks that address and the public IPv4
+addresses of configured TLS hostnames to prevent router loopback into other
+forwarded services. You can enter your actual public IPv4 in `public_ipv4` to avoid
+the discovery services. Add other WAN addresses or globally routed local IPv4
+ranges to `blocked_ipv4_networks`. **Restart after public-IP or resolver changes.**
+Addresses are snapshots from startup, not a continuous WAN-address monitor.
+
+Rules are installed atomically before package restoration or service startup.
+If the firewall cannot load, or a required public address cannot be determined,
+the app refuses to start and reports the error in HA's Log tab. No host firewall
+rules are modified. Keep Protection mode enabled.
+
+The startup process has `NET_ADMIN` in its own network namespace. It drops
+`NET_ADMIN` and `NET_RAW` from the runtime capability sets (including the bounding
+set) before launching services. SSH sudo still administers the workspace but
+cannot edit the live firewall or use raw packet sockets. Use HA's Configuration
+tab and restart the app to change policy. `myvps firewall` shows the policy
+installed at startup.
+
+This limits lateral connections from a compromised application. It does not
+protect data the application can already read, prevent denial of service, or
+replace network isolation enforced outside Docker. A Docker/HA administrator can
+bypass it; root compromise can alter files used on a later boot, and the container
+still shares the host kernel. Disabling protection explicitly restores local
+network connectivity. There is no local-service allowlist.
+
 ## What persists
 
 **`/data` is the persistent mount.** `/data/workspace` is a normal directory inside
@@ -224,7 +277,8 @@ Run the automated tests:
 ```sh
 docker build -t myvps:dev myvps
 docker run --rm --entrypoint /opt/myvps-tools/bin/python \
-  -v "$PWD/tests:/tests:ro" myvps:dev /tests/test_control.py
+  -v "$PWD/tests:/tests:ro" myvps:dev -m unittest discover -s /tests -v
+python3 scripts/firewall_test.py
 python3 scripts/smoke_test.py --acme
 ```
 
@@ -233,6 +287,15 @@ SSH, app crash recovery, saved package restoration, container replacement, and a
 C# server, and certificate issuance/renewal using Let's Encrypt's local Pebble
 test CA, then removes its own resources. It does not modify other containers
 or request public certificates. Omit `--acme` to skip the local CA test.
+
+The containment test uses a simulated device on temporary Docker networks, not
+your real home devices. It verifies TCP/UDP and IPv6 blocking, mapped IPv4 and
+public-IP loopback blocking, working public DNS/HTTPS, denied firewall/raw-packet
+access through SSH sudo, and persistence across restart. Standalone `docker run`
+deployments must grant `--cap-add NET_ADMIN` for startup; Compose already does so.
+The ACME smoke fixture adds a narrow, root-only exception to its private test CA
+using the external Docker administrator. Production Let's Encrypt is public and
+needs no local-network exception.
 
 ## Full Home Assistant + Supervisor test
 
