@@ -10,7 +10,9 @@ a container sharing HAOS's kernel. It does not boot a VM or expose the host's Do
 
 ## Install on Home Assistant
 
-1. Copy the GitHub URL for this repository.
+[![Add the myvps repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdanielcary%2Fha-foovps.git)
+
+1. Copy this repository URL: `https://github.com/danielcary/ha-foovps.git`.
 2. Open **Settings → Apps → Install app → ⋮ → Repositories**, paste the URL,
    and select **Add**. Select **myvps** under **myvps Home Assistant apps**.
    Refresh the store if needed, and enable Advanced mode in your user profile
