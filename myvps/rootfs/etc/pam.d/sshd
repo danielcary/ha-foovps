@@ -1,0 +1,5 @@
+# SSH keys are checked by sshd. Account/session checks work without a host loginuid or systemd session.
+auth required pam_deny.so
+account required pam_unix.so
+session required pam_unix.so
+session optional pam_umask.so

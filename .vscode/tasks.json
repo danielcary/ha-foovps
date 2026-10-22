@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Home Assistant",
+      "type": "shell",
+      "command": "supervisor_run",
+      "problemMatcher": []
+    },
+    {
+      "label": "Install myvps",
+      "type": "shell",
+      "command": "ha apps install local_myvps",
+      "problemMatcher": []
+    },
+    {
+      "label": "Start myvps",
+      "type": "shell",
+      "command": "ha apps start local_myvps",
+      "problemMatcher": []
+    },
+    {
+      "label": "Rebuild myvps",
+      "type": "shell",
+      "command": "ha apps rebuild --force local_myvps",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+.DS_Store
+__pycache__/
+*.pyc
+.test-data/
+.test-results/
+node_modules/
+bin/
+obj/
+dist/

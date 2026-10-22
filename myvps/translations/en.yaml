@@ -1,0 +1,35 @@
+configuration:
+  ssh_authorized_keys:
+    name: SSH public keys
+    description: Public keys allowed to sign in as vps. Never paste a private key here.
+  packages:
+    name: Extra Rocky packages
+    description: Packages installed automatically when the app starts.
+  app_enabled:
+    name: Start the web app automatically
+  app_directory:
+    name: Project directory
+    description: Select a project under /data/workspace. The default is the included Express example.
+  app_command:
+    name: Start command
+    description: Leave empty to use a Procfile web entry or npm start. Examples include node server.js and dotnet YourApp.dll.
+  app_port:
+    name: Internal app port
+    description: The backend port Nginx connects to. This does not publish another host port.
+  tls:
+    name: HTTPS certificates
+    description: Automatic Let's Encrypt certificates for the selected web app. Every hostname must point to this server and be reachable on public port 80.
+    fields:
+      enabled:
+        name: Enable automatic HTTPS
+      domains:
+        name: Domain names
+        description: One hostname per entry, such as app.example.com and www.example.com. All names serve the selected app. The first names the certificate.
+      domain:
+        name: Legacy single hostname
+        description: Compatibility setting for version 0.1. Prefer the Domain names list.
+      email:
+        name: Let's Encrypt account email
+      staging:
+        name: Use the staging CA
+        description: Test issuance using untrusted certificates. Disable this to obtain a browser-trusted production certificate.

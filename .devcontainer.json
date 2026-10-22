@@ -1,0 +1,22 @@
+{
+  "name": "myvps Home Assistant development",
+  "image": "ghcr.io/home-assistant/devcontainer:5-apps",
+  "overrideCommand": false,
+  "remoteUser": "vscode",
+  "appPort": ["7123:80", "7357:4357", "8000:8000", "8443:8443", "2222:2222"],
+  "postStartCommand": "bash devcontainer_bootstrap",
+  "runArgs": ["--privileged"],
+  "workspaceFolder": "/mnt/supervisor/apps/local/${localWorkspaceFolderBasename}",
+  "workspaceMount": "source=${localWorkspaceFolder},target=${containerWorkspaceFolder},type=bind,consistency=cached",
+  "containerEnv": {
+    "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}",
+    "SUPERVISOR_CHANNEL": "stable",
+    "SUPERVISOR_UNCONFINED": "1"
+  },
+  "mounts": [
+    "type=volume,target=/var/lib/docker",
+    "type=volume,target=/var/lib/containerd",
+    "type=volume,target=/mnt/supervisor",
+    "type=tmpfs,target=/tmp"
+  ]
+}

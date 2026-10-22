@@ -1,0 +1,2 @@
+Defaults secure_path=/opt/myvps-tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+vps ALL=(ALL) NOPASSWD: ALL

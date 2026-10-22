@@ -1,0 +1,56 @@
+name: myvps
+version: "0.2.0"
+slug: myvps
+description: Rocky Linux workspace with SSH, Node.js, .NET, Nginx, and Let's Encrypt
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+init: false
+stage: experimental
+timeout: 60
+host_network: false
+privileged:
+  - AUDIT_WRITE
+ports:
+  22/tcp: 2222
+  80/tcp: 8000
+  443/tcp: 8443
+ports_description:
+  22/tcp: SSH workspace (key authentication)
+  80/tcp: HTTP and Let's Encrypt validation
+  443/tcp: HTTPS (after certificate issuance)
+webui: "http://[HOST]:[PORT:80]"
+map:
+  - type: app_config
+    read_only: false
+backup: cold
+options:
+  ssh_authorized_keys: []
+  packages: []
+  app_enabled: true
+  app_directory: /data/workspace/starter-app
+  app_command: ""
+  app_port: 3000
+  tls:
+    enabled: false
+    domains: []
+    email: ""
+    staging: false
+schema:
+  ssh_authorized_keys:
+    - str
+  packages:
+    - str
+  app_enabled: bool
+  app_directory: str
+  app_command: str
+  app_port: port
+  tls:
+    enabled: bool
+    domains:
+      - str
+    domain: "str?"
+    email: str
+    staging: bool

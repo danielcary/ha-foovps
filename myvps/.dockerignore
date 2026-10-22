@@ -1,0 +1,6 @@
+__pycache__
+*.pyc
+node_modules
+**/node_modules
+**/bin
+**/obj

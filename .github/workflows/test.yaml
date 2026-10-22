@@ -1,0 +1,24 @@
+name: Test myvps
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  container:
+    strategy:
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the workspace
+        run: docker build -t myvps:dev myvps
+      - name: Configuration checks
+        run: >-
+          docker run --rm --entrypoint /opt/myvps-tools/bin/python
+          -v "$PWD/tests:/tests:ro" myvps:dev /tests/test_control.py
+      - name: SSH, Express, .NET, persistence, and local ACME
+        run: python3 scripts/smoke_test.py --acme
